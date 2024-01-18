@@ -1,0 +1,46 @@
+{
+    "base": "stations",
+    "clouds": {
+        "all": 26
+    },
+    "cod": 200,
+    "coord": {
+        "lat": 6.9329,
+        "lon": 79.8848
+    },
+    "dt": 1705565105,
+    "id": 1239593,
+    "main": {
+        "feels_like": 310.18,
+        "grnd_level": 1008,
+        "humidity": 68,
+        "pressure": 1009,
+        "sea_level": 1009,
+        "temp": 304.16,
+        "temp_max": 304.16,
+        "temp_min": 304.16
+    },
+    "name": "Kolonnawa",
+    "sys": {
+        "country": "LK",
+        "id": 9098,
+        "sunrise": 1705539440,
+        "sunset": 1705581805,
+        "type": 1
+    },
+    "timezone": 19800,
+    "visibility": 10000,
+    "weather": [
+        {
+            "description": "scattered clouds",
+            "icon": "03d",
+            "id": 802,
+            "main": "Clouds"
+        }
+    ],
+    "wind": {
+        "deg": 276,
+        "gust": 3.14,
+        "speed": 3.42
+    }
+}
