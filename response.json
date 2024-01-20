@@ -1,46 +1,43 @@
 {
     "base": "stations",
     "clouds": {
-        "all": 26
+        "all": 75
     },
     "cod": 200,
     "coord": {
-        "lat": 6.9329,
-        "lon": 79.8848
+        "lat": 7.1699,
+        "lon": 79.8884
     },
-    "dt": 1705565105,
-    "id": 1239593,
+    "dt": 1705754680,
+    "id": 1240935,
     "main": {
-        "feels_like": 310.18,
-        "grnd_level": 1008,
-        "humidity": 68,
-        "pressure": 1009,
-        "sea_level": 1009,
-        "temp": 304.16,
-        "temp_max": 304.16,
-        "temp_min": 304.16
+        "feels_like": 299.13,
+        "humidity": 94,
+        "pressure": 1011,
+        "temp": 298.12,
+        "temp_max": 298.12,
+        "temp_min": 298.12
     },
-    "name": "Kolonnawa",
+    "name": "Katunayaka",
     "sys": {
         "country": "LK",
         "id": 9098,
-        "sunrise": 1705539440,
-        "sunset": 1705581805,
+        "sunrise": 1705712286,
+        "sunset": 1705754635,
         "type": 1
     },
     "timezone": 19800,
-    "visibility": 10000,
+    "visibility": 9000,
     "weather": [
         {
-            "description": "scattered clouds",
-            "icon": "03d",
-            "id": 802,
+            "description": "broken clouds",
+            "icon": "04n",
+            "id": 803,
             "main": "Clouds"
         }
     ],
     "wind": {
-        "deg": 276,
-        "gust": 3.14,
-        "speed": 3.42
+        "deg": 0,
+        "speed": 1.54
     }
 }

@@ -13,6 +13,9 @@ async_requests.py
 images/10761008_45211.jpg
 images/angryimg (1).png
 images/angryimg.png
+assets/new.csv
+Errors.txt
+response.json
 
 # Distribution / packaging
 .Python

@@ -58,9 +58,6 @@ class WeatherApp(MDApp):
 
     def changeTheme(self, x):
         # "#607D8B"
-        # self.theme_cls.primary_palette = (
-        #     "Gray" if self.theme_cls.primary_palette == "BlueGray" else "BlueGray"
-        # )
         self.theme_cls.theme_style = (
             "Dark" if self.theme_cls.theme_style == "Light" else "Light"
         )
@@ -93,7 +90,7 @@ class WeatherApp(MDApp):
         )
 
     def filterCountries(self, *args):
-        country_input = self.cdialog.ids.country_input.text
+        country_input = self.cdialog.ids.country_input.text.lower()
 
         def filterCountry(country):
             if country_input in country:
@@ -160,7 +157,7 @@ class WeatherApp(MDApp):
                         on_release=lambda x: self.closeDialog(dialog=True, alert=False),
                     ),
                     MDFlatButton(
-                        text="CHANGE",
+                        text="UPDATE",
                         theme_text_color="Custom",
                         text_color=self.theme_cls.primary_color,
                         on_release=self.get_data,
@@ -180,7 +177,7 @@ class WeatherApp(MDApp):
         self.called = True
         print(text)
         self.cdialog.ids.country_input.text = text
-        index = list(self.countries).index(text)
+        index = list(self.countries).index(text.lower())
         self.city = self.cdialog.ids.city_input.text
         self.country = text
         self.country_code = self.country_codes[index]
@@ -209,7 +206,7 @@ class WeatherApp(MDApp):
             self.old_country_code = self.country_code
             self.country = self.cdialog.ids.country_input.text
             try:
-                index = list(self.countries).index(self.country)
+                index = list(self.countries).index(self.country.lower())
                 self.country_code = self.country_codes[index]
             except Exception:
                 self.country = self.old_country
@@ -280,17 +277,18 @@ class WeatherApp(MDApp):
         if self.request_in_progress:
             if not self.first_run:
                 self.request_in_progress = False
-                self.root.ids.image.source = self.icon_url
+                self.root.ids.image.source = f"images/{self.weather_data['icon']}.png"
                 self.root.ids.weather.text = self.weather_data["weather"]
                 self.root.ids.weather_info.text = self.weather_data["weather-info"]
-                self.root.ids.temperature.text = self.weather_data["feels_like"] + "°C"
+                self.root.ids.temperature.text = self.weather_data["temp"] + "°C"
+                self.root.ids.feels_like_temp.text = f"Feels Like {self.weather_data['feels_like']}°C"
                 self.root.ids.humidity.text = self.weather_data["humidity"] + "%"
                 self.root.ids.sunrise.text = self.weather_data["sunrise"]
                 self.root.ids.sunset.text = self.weather_data["sunset"]
                 self.root.ids.wind.text = self.weather_data["wind"] + "m/s"
 
-            self.root.ids.city.text = self.city
-            self.root.ids.country.text = self.country
+            self.root.ids.city.text = self.city.capitalize()
+            self.root.ids.country.text = self.country.capitalize()
 
     async def get_my_current_location(self):
         try:
@@ -315,9 +313,9 @@ class WeatherApp(MDApp):
 
     async def get_location(self, location_url):
         print("HI")
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as self.session:
             print("aiohttp")
-            async with session.get(location_url) as location_response:
+            async with self.session.get(location_url) as location_response:
                 print("session.get")
                 if location_response.status == 200:
                     print("response 200")
@@ -342,8 +340,8 @@ class WeatherApp(MDApp):
                     )
 
     async def get_weather_data(self, weather_url):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(weather_url) as weather_response:
+        async with aiohttp.ClientSession() as self.session:
+            async with self.session.get(weather_url) as weather_response:
                 if weather_response.status == 200:
                     json_data = await weather_response.json()
                     with open("response.json", "w") as file:
@@ -417,6 +415,7 @@ class WeatherApp(MDApp):
             "sunrise": str(sunrise),
             "weather": str(main),
             "weather-info": str(description),
+            "icon": str(icon),
             "wind": str(wind),
         }
 

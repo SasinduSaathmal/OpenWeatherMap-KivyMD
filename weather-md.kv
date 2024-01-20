@@ -40,156 +40,178 @@
     orientation: "vertical"
     md_bg_color: app.theme_cls.primary_color
 
-    MDTopAppBar:
-        title: "Weather Today"
-        right_action_items: [["theme-light-dark", lambda x: app.root.ids.progress.start()]]
-        opposite_colors: True
-        anchor_title: "center"
-        md_bg_color: "607D8B"
-    
-        MDProgressBar:
-            id: progress
-            type: "indeterminate"
-            running_duration: 1
-            catching_duration: 1.5
-            size_hint_y: 0.1
-            theme_color: "Custom"
-            background_color: "607D8B"
-            color: "lightblue"
+    MDScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
 
-    MDFloatLayout:
-        MDLabel:
-            id: country
-            text: "Country"
-            halign: "center"
-            font_style: "H4"
-            font_name: "fonts/Poppins-Bold"
-            padding: 1, 1
-            pos_hint: {"center_x": 0.5, "center_y": 0.8}
-            bold: True
-        MDLabel:
-            id: city
-            text: "City"
-            halign: "center"
-            font_style: "H4"
-            font_name: "fonts/Poppins-Bold"
-            padding: 1, 1
-            pos_hint: {"center_x": 0.5, "center_y": 0.6}
-            # theme_text_color: "Custom"
-            bold: True
-            # text_color: 0, 0, 1, 1
+        MDBoxLayout:
+            orientation: "vertical"
+            MDTopAppBar:
+                title: "Weather Today"
+                right_action_items: [["theme-light-dark", lambda x: app.root.ids.progress.start()]]
+                opposite_colors: True
+                anchor_title: "center"
+                md_bg_color: "607D8B"
             
+                MDProgressBar:
+                    id: progress
+                    type: "indeterminate"
+                    running_duration: 1
+                    catching_duration: 1.5
+                    size_hint_y: 0.1
+                    theme_color: "Custom"
+                    back_color: "607D8B"
+                    color: "lightblue"
 
-    MDFloatLayout:
-        AnchorLayout:
-            pos_hint: {"center_x": 0.5, "center_y": 0.7}
-            anchor_x: "center"
-            halign: "center"
-            MDBoxLayout:
-                orientation: "vertical"
-                halign: "center"
-                MDBoxLayout:
-                    AsyncImage:
-                        id: image
-                        source: "images/weather.png"
-                        allow_strech: False
-                        #pos_hint_y: 0.4
-                        size_hint: 2, 2
-                MDBoxLayout:
-                    MDLabel:
-                        halign: "center"
-                        id: weather
-                        padding: 0, 0
-                        font_style: "H3"
-                        font_name: "fonts/Poppins-Thin"
-                        # ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'Subtitle1', 'Subtitle2', 'Body1', 'Body2', 'Button', 'Caption', 'Overline', 'Icon']
-                        text: "Cloudy"
-                MDBoxLayout:
-                    MDLabel:
-                        halign: "center"
-                        id: weather_info
-                        padding: 1, 1
-                        font_style: "H4"
-                        font_name: "fonts/Poppins-Thin"
-                        # ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'Subtitle1', 'Subtitle2', 'Body1', 'Body2', 'Button', 'Caption', 'Overline', 'Icon']
-                        text: "Partly Cloudy"
-                MDBoxLayout:
-                    MDLabel:
-                        halign: "center"
-                        id: temperature
-                        padding: 1, 1
-                        font_name: "fonts/Poppins-Medium"
-                        font_style: "H4"
-                        text: "30°C"
+            MDFloatLayout:
+                MDLabel:
+                    id: country
+                    text: "Country"
+                    halign: "center"
+                    font_style: "H4"
+                    font_name: "fonts/Poppins-Bold"
+                    padding: 1, 1
+                    pos_hint: {"center_x": 0.5, "center_y": 0.8}
+                    bold: True
+                MDLabel:
+                    id: city
+                    text: "City"
+                    halign: "center"
+                    font_style: "H4"
+                    font_name: "fonts/Poppins-Bold"
+                    padding: 1, 1
+                    pos_hint: {"center_x": 0.5, "center_y": 0.6}
+                    # theme_text_color: "Custom"
+                    bold: True
+                    # text_color: 0, 0, 1, 1
                     
-    MDFloatLayout:
-        AnchorLayout:
-            pos_hint: {"center_x": 0.5, "center_y": 0.5}
-            anchor_x: "center"
-            anchor_y: "bottom"
-            padding: 40, 20, 40, 30 # left, top, right, bottom
-            MDCard:
-                adaptive_size: True
-                style: "outlined" # elevated, filled, outlined
-                shadow_softness: 2
-                shadow_offset: (0, 1.5)
-                size_hint: 0.5, 1
-                md_bg_color: "darkgray"
-                unfocus_color: "darkgray"
-                focus_color: "gray"
-                halign: "center"
-                focus_behavior: True
-                ripple_behavior: True
 
+            MDFloatLayout:
                 MDBoxLayout:
+                    pos_hint: {"center_x": 0.5, "center_y": 0.7}
                     orientation: "vertical"
+                    #anchor_x: "center"
+                    halign: "center"
+                    MDFloatLayout:
+                        AnchorLayout:
+                            pos_hint: {"center_x": 0.3, "center_y": 0.5}
+                            anchor_y: "center"
+                            AsyncImage:
+                                id: image
+                                source: "images/weather.png"
+                                allow_strech: False
+                                pos_hint_y: 0.1
+                                #size_hint: 2, 2
 
-                    MDBoxLayout:
-                        orientation: "horizontal"
-                        Image:
-                            source: "images/humidity.png"
-                        LeftMostLabel:
-                            text: "Humidity"
-                        RightMostLabel:
-                            id: humidity
-                            text: "65%"
+                        MDBoxLayout:
+                            pos_hint: {"center_x": 0.6, "center_y": 0.5}
+                            orientation: "vertical"
+                            MDBoxLayout:
+                                MDLabel:
+                                    halign: "center"
+                                    id: weather
+                                    padding: 0, 0
+                                    font_style: "H3"
+                                    font_name: "fonts/Poppins-Thin"
+                                    # ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'Subtitle1', 'Subtitle2', 'Body1', 'Body2', 'Button', 'Caption', 'Overline', 'Icon']
+                                    text: "Cloudy"
 
-                    MDBoxLayout:
-                        orientation: "horizontal"
-                        Image:
-                            source: "images/sunrise.png"
-                        LeftMostLabel:
-                            text: "Sunrise"
-                        RightMostLabel:
-                            id: sunrise
-                            text: "06:11"
+                            MDBoxLayout:
+                                MDLabel:
+                                    halign: "center"
+                                    id: weather_info
+                                    padding: 800, 0, 0, 0 # left, top, right, bottom
+                                    font_style: "H4"
+                                    font_name: "fonts/Poppins-Thin"
+                                    # ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'Subtitle1', 'Subtitle2', 'Body1', 'Body2', 'Button', 'Caption', 'Overline', 'Icon']
+                                    text: "Partly Cloudy"
 
-                    MDBoxLayout:
-                        orientation: "horizontal"
-                        Image:
-                            source: "images/sunset.png"
-                        LeftMostLabel:
-                            text: "Sunset"
-                        RightMostLabel:
-                            id: sunset
-                            text: "18:15"
+                            MDBoxLayout:
+                                MDLabel:
+                                    halign: "center"
+                                    id: temperature
+                                    padding: 1, 1
+                                    font_name: "fonts/Poppins-Medium"
+                                    font_style: "H4"
+                                    text: "30°C"
 
-                    MDBoxLayout:
-                        orientation: "horizontal"
-                        Image:
-                            source: "images/wind.png"
-                        LeftMostLabel:
-                            text: "Wind"
-                        RightMostLabel:
-                            id: wind
-                            text: "5 m/s"
+                            MDBoxLayout:
+                                MDLabel:
+                                    halign: "center"
+                                    id: feels_like_temp
+                                    padding: 1, 1
+                                    font_name: "fonts/Poppins-Medium"
+                                    font_style: "H5"
+                                    text: "Feels like 31°C"
+                            
+            MDFloatLayout:
+                AnchorLayout:
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                    anchor_x: "center"
+                    anchor_y: "bottom"
+                    padding: 40, 20, 40, 30 # left, top, right, bottom
+                    MDCard:
+                        adaptive_size: True
+                        style: "outlined" # elevated, filled, outlined
+                        shadow_softness: 2
+                        shadow_offset: (0, 1.5)
+                        size_hint: 0.5, 1
+                        md_bg_color: "darkgray"
+                        unfocus_color: "darkgray"
+                        focus_color: "gray"
+                        halign: "center"
+                        focus_behavior: True
+                        ripple_behavior: True
 
-        ToolTipActionButton:
-            icon: "pencil"
-            tooltip_text: "Edit the location"
-            md_bg_color: "indigo"  #['Red', 'Pink', 'Purple', 'DeepPurple', 'Indigo', 'Blue', 'LightBlue', 'Cyan', 'Teal', 'Green', 'LightGreen', 'Lime', 'Yellow', 'Amber', 'Orange', 'DeepOrange', 'Brown', 'Gray', 'BlueGray']
-            pos_hint: {"center_x": 0.9, "center_y": 0.4}
-            on_press: app.get_city()
-            
+                        MDBoxLayout:
+                            orientation: "vertical"
+
+                            MDBoxLayout:
+                                orientation: "horizontal"
+                                Image:
+                                    source: "images/humidity.png"
+                                LeftMostLabel:
+                                    text: "Humidity"
+                                RightMostLabel:
+                                    id: humidity
+                                    text: "65%"
+
+                            MDBoxLayout:
+                                orientation: "horizontal"
+                                Image:
+                                    source: "images/sunrise.png"
+                                LeftMostLabel:
+                                    text: "Sunrise"
+                                RightMostLabel:
+                                    id: sunrise
+                                    text: "06:11"
+
+                            MDBoxLayout:
+                                orientation: "horizontal"
+                                Image:
+                                    source: "images/sunset.png"
+                                LeftMostLabel:
+                                    text: "Sunset"
+                                RightMostLabel:
+                                    id: sunset
+                                    text: "18:15"
+
+                            MDBoxLayout:
+                                orientation: "horizontal"
+                                Image:
+                                    source: "images/wind.png"
+                                LeftMostLabel:
+                                    text: "Wind"
+                                RightMostLabel:
+                                    id: wind
+                                    text: "5 m/s"
+
+                ToolTipActionButton:
+                    icon: "pencil"
+                    tooltip_text: "Update the location"
+                    md_bg_color: "indigo"  #['Red', 'Pink', 'Purple', 'DeepPurple', 'Indigo', 'Blue', 'LightBlue', 'Cyan', 'Teal', 'Green', 'LightGreen', 'Lime', 'Yellow', 'Amber', 'Orange', 'DeepOrange', 'Brown', 'Gray', 'BlueGray']
+                    pos_hint: {"center_x": 0.9, "center_y": 0.4}
+                    on_press: app.get_city()
+                
 
 
