@@ -1,33 +1,35 @@
 {
     "base": "stations",
     "clouds": {
-        "all": 75
+        "all": 66
     },
     "cod": 200,
     "coord": {
-        "lat": 7.1699,
-        "lon": 79.8884
+        "lat": 6.9355,
+        "lon": 79.8487
     },
-    "dt": 1705754680,
-    "id": 1240935,
+    "dt": 1705761664,
+    "id": 1248991,
     "main": {
-        "feels_like": 299.13,
-        "humidity": 94,
-        "pressure": 1011,
-        "temp": 298.12,
-        "temp_max": 298.12,
-        "temp_min": 298.12
+        "feels_like": 298.92,
+        "grnd_level": 1011,
+        "humidity": 85,
+        "pressure": 1012,
+        "sea_level": 1012,
+        "temp": 298.15,
+        "temp_max": 298.15,
+        "temp_min": 298.15
     },
-    "name": "Katunayaka",
+    "name": "Colombo",
     "sys": {
         "country": "LK",
         "id": 9098,
-        "sunrise": 1705712286,
-        "sunset": 1705754635,
+        "sunrise": 1705712274,
+        "sunset": 1705754666,
         "type": 1
     },
     "timezone": 19800,
-    "visibility": 9000,
+    "visibility": 10000,
     "weather": [
         {
             "description": "broken clouds",
@@ -37,7 +39,8 @@
         }
     ],
     "wind": {
-        "deg": 0,
-        "speed": 1.54
+        "deg": 33,
+        "gust": 4.56,
+        "speed": 3.6
     }
 }
