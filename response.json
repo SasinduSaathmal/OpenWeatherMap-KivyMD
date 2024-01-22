@@ -1,46 +1,44 @@
 {
     "base": "stations",
     "clouds": {
-        "all": 66
+        "all": 32
     },
     "cod": 200,
     "coord": {
-        "lat": 6.9355,
-        "lon": 79.8487
+        "lat": 6.8905,
+        "lon": 79.9015
     },
-    "dt": 1705761664,
-    "id": 1248991,
+    "dt": 1705911459,
+    "id": 1230089,
     "main": {
-        "feels_like": 298.92,
-        "grnd_level": 1011,
-        "humidity": 85,
-        "pressure": 1012,
-        "sea_level": 1012,
-        "temp": 298.15,
-        "temp_max": 298.15,
-        "temp_min": 298.15
+        "feels_like": 307.27,
+        "grnd_level": 1010,
+        "humidity": 63,
+        "pressure": 1011,
+        "sea_level": 1011,
+        "temp": 303.47,
+        "temp_max": 303.47,
+        "temp_min": 303.47
     },
-    "name": "Colombo",
+    "name": "Pita Kotte",
     "sys": {
         "country": "LK",
-        "id": 9098,
-        "sunrise": 1705712274,
-        "sunset": 1705754666,
-        "type": 1
+        "sunrise": 1705885080,
+        "sunset": 1705927506
     },
     "timezone": 19800,
     "visibility": 10000,
     "weather": [
         {
-            "description": "broken clouds",
-            "icon": "04n",
-            "id": 803,
+            "description": "scattered clouds",
+            "icon": "03d",
+            "id": 802,
             "main": "Clouds"
         }
     ],
     "wind": {
-        "deg": 33,
-        "gust": 4.56,
-        "speed": 3.6
+        "deg": 298,
+        "gust": 3.94,
+        "speed": 3.33
     }
 }

@@ -1,5 +1,7 @@
 # https://kivy.org/doc/stable/guide/lang.html
 
+#: import dp kivy.metrics.dp
+
 <LeftMostLabel@MDLabel>:
     AnchorLayout:
         anchor_x: "left"
@@ -37,6 +39,7 @@
 
 
 <WeatherUI>:
+    id: main_box
     orientation: "vertical"
     md_bg_color: app.theme_cls.primary_color
 
@@ -48,7 +51,7 @@
             orientation: "vertical"
             MDTopAppBar:
                 title: "Weather Today"
-                right_action_items: [["theme-light-dark", lambda x: app.root.ids.progress.start()]]
+                #right_action_items: [["theme-light-dark", lambda x: app.root.ids.progress.start()]]
                 opposite_colors: True
                 anchor_title: "center"
                 md_bg_color: "607D8B"
@@ -88,13 +91,15 @@
 
             MDFloatLayout:
                 MDBoxLayout:
-                    pos_hint: {"center_x": 0.5, "center_y": 0.7}
+                    pos_hint: {"center_x": 0.5, "center_y": 0.8}
                     orientation: "vertical"
                     #anchor_x: "center"
                     halign: "center"
                     MDFloatLayout:
                         AnchorLayout:
-                            pos_hint: {"center_x": 0.3, "center_y": 0.5}
+                            padding: 20, 0
+                            #pos_hint: {"center_x": 0.3, "center_y": 0.5} # Desktop
+                            pos_hint: {"center_x": 0.2, "center_y": 0.5} # Android
                             anchor_y: "center"
                             AsyncImage:
                                 id: image
@@ -104,14 +109,16 @@
                                 #size_hint: 2, 2
 
                         MDBoxLayout:
-                            pos_hint: {"center_x": 0.6, "center_y": 0.5}
+                            padding: 20, 0
+                            #pos_hint: {"center_x": 0.6, "center_y": 0.5} # Desktop
+                            pos_hint: {"center_x": 0.75, "center_y": 0.5} # Android
                             orientation: "vertical"
                             MDBoxLayout:
                                 MDLabel:
                                     halign: "center"
                                     id: weather
                                     padding: 0, 0
-                                    font_style: "H3"
+                                    font_style: "H4"
                                     font_name: "fonts/Poppins-Thin"
                                     # ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'Subtitle1', 'Subtitle2', 'Body1', 'Body2', 'Button', 'Caption', 'Overline', 'Icon']
                                     text: "Cloudy"
@@ -120,7 +127,7 @@
                                 MDLabel:
                                     halign: "center"
                                     id: weather_info
-                                    font_style: "H4"
+                                    font_style: "H5"
                                     font_name: "fonts/Poppins-Thin"
                                     # ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'Subtitle1', 'Subtitle2', 'Body1', 'Body2', 'Button', 'Caption', 'Overline', 'Icon']
                                     text: "Partly Cloudy"
@@ -131,7 +138,7 @@
                                     id: temperature
                                     padding: 1, 1
                                     font_name: "fonts/Poppins-Medium"
-                                    font_style: "H4"
+                                    font_style: "H5"
                                     text: "30°C"
 
                             MDBoxLayout:
@@ -140,7 +147,7 @@
                                     id: feels_like_temp
                                     padding: 1, 1
                                     font_name: "fonts/Poppins-Medium"
-                                    font_style: "H5"
+                                    font_style: "H6"
                                     text: "Feels like 31°C"
                             
             MDFloatLayout:
@@ -154,7 +161,7 @@
                         style: "outlined" # elevated, filled, outlined
                         shadow_softness: 2
                         shadow_offset: (0, 1.5)
-                        size_hint: 0.5, 1
+                        size_hint: 0.7, 1.34
                         md_bg_color: "darkgray"
                         unfocus_color: "darkgray"
                         focus_color: "gray"

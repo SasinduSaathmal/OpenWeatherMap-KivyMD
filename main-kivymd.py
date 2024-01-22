@@ -1,6 +1,7 @@
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.menu import MDDropdownMenu
@@ -13,12 +14,20 @@ import geocoder
 import pytz
 import platform
 import asyncio
+import requests
+import os
+import certifi
+import ssl
+
+
+ssl.default_ca_certs = certifi.where()
+os.environ['SSL_CERT_FILE'] = certifi.where()
 
 if platform.system() == "Windows":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-class WeatherUI(MDBoxLayout):
+class WeatherUI(MDRelativeLayout):
     pass
 
 
@@ -26,100 +35,9 @@ class ChangeDialog(MDBoxLayout):
     pass
 
 
-class WeatherApp(MDApp):
+class MessageHandler():
     def __init__(self, **kwargs):
-        super(WeatherApp, self).__init__(**kwargs)
-
-        self.request_in_progress = False  # Flag to track request status
-        self.first_run = True
-        self.called = False
-        self.alert_dialog = None
-        self.dialog = None
-        self.city = "City"
-        self.country_code = "Country code"
-        self.country = "Country"
-        Builder.load_file("weather-md.kv")
-        self.build()
-
-        Clock.schedule_once(self.start_request)
-        Clock.schedule_interval(
-            self.check_request_status, 0.5
-        )  # Check status every 0.5 seconds
-        self.initMenu()
-
-    def build(self):
-        # self.theme_cls.colors = colours
-        self.icon = "images/weather-icon.png"
-        self.theme_cls.theme_style_switch_animation = True
-        self.theme_cls.primary_palette = "DeepPurple"
-        self.theme_cls.theme_style = "Dark"
-
-        return WeatherUI()
-
-    def changeTheme(self, x):
-        # "#607D8B"
-        self.theme_cls.theme_style = (
-            "Dark" if self.theme_cls.theme_style == "Light" else "Light"
-        )
-
-    def initMenu(self):
-        countries, country_codes = self.extractCountryData()
-        self.countries = countries
-        self.country_codes = country_codes
-
-        self.cdialog = ChangeDialog()
-
-        self.menu_items = [
-            {
-                "viewclass": "OneLineListItem",
-                "text": str(i),
-                "on_press": lambda x=str(i): self.changeCountry(x),
-            }
-            for i in self.countries
-        ]
-
-        self.menu = MDDropdownMenu(
-            caller=self.cdialog.ids.country_input,
-            items=self.menu_items,
-            ver_growth="down",
-            hor_growth="right",
-            position="center",
-            width_mult=4,
-            max_height=200,
-            elevation=5,
-        )
-
-    def filterCountries(self, *args):
-        country_input = self.cdialog.ids.country_input.text.lower()
-
-        def filterCountry(country):
-            if country_input in country:
-                return True
-
-        if (not country_input == "") and (not self.called == True):
-            items = list(filter(filterCountry, self.countries))
-            self.menu_items = [
-                {
-                    "viewclass": "OneLineListItem",
-                    "text": str(i),
-                    "on_press": lambda x=str(i): self.changeCountry(x),
-                }
-                for i in items
-            ]
-            self.menu.items = self.menu_items
-            self.menu.dismiss()
-            self.menu.open()
-
-            self.menu_items = [
-                {
-                    "viewclass": "OneLineListItem",
-                    "text": str(i),
-                    "on_press": lambda x=str(i): self.changeCountry(x),
-                }
-                for i in self.countries
-            ]
-
-        self.called = False
+        super(MessageHandler, self).__init__(**kwargs)
 
     def cityNotFound(self):
         print("City Not Found")
@@ -142,6 +60,23 @@ class WeatherApp(MDApp):
         self.country_code = self.old_country
 
         self.alert_dialog.open()
+
+    def connectionError(self):
+        self.retry_event = Clock.schedule_interval(self.retry, 1)
+        self.conn_error_dialog = MDDialog(
+            title = "Connection Error",
+            text = "Failed to connect to the api after 10 max retries.",
+            widget_style = "android",
+            buttons = [
+                MDFlatButton(
+                    text = "RETRY",
+                    text_color = "red",
+                    on_release = self.retry,
+                    )
+                ],
+            )
+
+        self.conn_error_dialog.open()
 
     def get_city(self, *args):
         if not self.dialog:
@@ -167,128 +102,28 @@ class WeatherApp(MDApp):
         self.dialog.open()
         print(self.city, self.country)
 
+
     def closeDialog(self, *args, **kwargs):
         if kwargs["dialog"] == True:
             self.dialog.dismiss(force=True)
         if kwargs["alert"] == True:
             self.alert_dialog.dismiss(force=True)
 
-    def changeCountry(self, text):
-        self.called = True
-        print(text)
-        self.cdialog.ids.country_input.text = text
-        index = list(self.countries).index(text.lower())
-        self.city = self.cdialog.ids.city_input.text
-        self.country = text
-        self.country_code = self.country_codes[index]
-        self.menu.dismiss()
 
-    def extractCountryData(self):
-        data = pandas.read_csv("assets/country-data.csv")
-        countries = data.Name.values
-        country_codes = data.Code.values
-        return countries, country_codes
+class DataHandler():
+    def __init__(self, **kwargs):
+        super(DataHandler, self).__init__(**kwargs)
 
-    def doProgress(self, state):
-        if state == "off":
-            print("Start")
-            self.root.ids.progress.start()
-        if state == "on":
-            print("Stop")
-            self.root.ids.progress.stop()
+    def checkConnection(self):
+        self.is_retrying = True
+        try:
+            resp = requests.get("https://www.google.com")
+            data = resp.text
+            status = resp.status_code
+            return True, status
+        except Exception as e:
+            return False, e
 
-    def get_data(self, *args):
-        self.dialog.dismiss(force=True)
-        if not self.request_in_progress:
-            self.root.ids.progress.start()
-            self.old_city = self.city
-            self.old_country = self.country
-            self.old_country_code = self.country_code
-            self.country = self.cdialog.ids.country_input.text
-            try:
-                index = list(self.countries).index(self.country.lower())
-                self.country_code = self.country_codes[index]
-            except Exception:
-                self.country = self.old_country
-                self.dialog.dismiss(force=True)
-                self.cityNotFound()
-                return
-            self.city = self.cdialog.ids.city_input.text
-            Clock.schedule_once(self.start_request)
-        self.root.ids.progress.stop()
-
-    def start_request(self, *args):
-        self.request_in_progress = True
-        Clock.schedule_once(
-            lambda dt: asyncio.run(self.make_request(self.city, self.country_code))
-        )
-        print(self.city, self.country, self.country_code)
-
-    async def make_request(self, city, country_code):
-        api_key = "c4fd92f2363b707ff8f8f192e5d3f02c"
-        if not self.first_run:
-            location_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit=3&appid={api_key}"
-            while True:
-                self.doProgress("off")
-                try:
-                    lat, lon = await self.get_location(location_url)
-                    self.doProgress("on")
-                    break
-                except Exception as e:
-                    print(f"Error at getting location: {e}")
-                    continue
-
-        else:
-            while True:
-                self.doProgress("off")
-                try:
-                    lat, lon = await self.get_my_current_location()
-                    self.doProgress("on")
-                    break
-                except Exception as e:
-                    print(f"Error at ip getting location: {e}")
-                    continue
-        if lat == 1 and lon == 1:
-            self.root.ids.city.text = self.city = self.old_city
-            self.root.ids.country.text = self.country = self.old_country
-            self.country_code = self.old_country
-            self.dialog.dismiss(force=True)
-            self.cityNotFound()
-            return "City not found!"
-        else:
-            weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}"
-            while True:
-                self.doProgress("off")
-                try:
-                    status = await self.get_weather_data(weather_url)
-                    self.doProgress("on")
-                    break
-                except Exception as e:
-                    print(f"Error at getting weather data: {e}")
-                    continue
-            if not status == "Success":
-                self.city = status
-                return status
-            data = await self.modify()
-            self.first_run = False
-            return data
-
-    def check_request_status(self, dt):
-        if self.request_in_progress:
-            if not self.first_run:
-                self.request_in_progress = False
-                self.root.ids.image.source = f"images/{self.weather_data['icon']}.png"
-                self.root.ids.weather.text = self.weather_data["weather"]
-                self.root.ids.weather_info.text = self.weather_data["weather-info"]
-                self.root.ids.temperature.text = self.weather_data["temp"] + "°C"
-                self.root.ids.feels_like_temp.text = f"Feels Like {self.weather_data['feels_like']}°C"
-                self.root.ids.humidity.text = self.weather_data["humidity"] + "%"
-                self.root.ids.sunrise.text = self.weather_data["sunrise"]
-                self.root.ids.sunset.text = self.weather_data["sunset"]
-                self.root.ids.wind.text = self.weather_data["wind"] + "m/s"
-
-            self.root.ids.city.text = self.city.capitalize()
-            self.root.ids.country.text = self.country.capitalize()
 
     async def get_my_current_location(self):
         try:
@@ -301,6 +136,7 @@ class WeatherApp(MDApp):
                     self.root.ids.country.text = self.country_code = g.country
                     index = list(self.country_codes).index(self.country_code)
                     self.country = self.countries[index]
+                    self.is_ip = False
                     return latitude, longitude
                 else:
                     print("Unable to retrieve your GPS coordinates.")
@@ -312,15 +148,10 @@ class WeatherApp(MDApp):
         return None
 
     async def get_location(self, location_url):
-        print("HI")
         async with aiohttp.ClientSession() as self.session:
-            print("aiohttp")
             async with self.session.get(location_url) as location_response:
-                print("session.get")
                 if location_response.status == 200:
-                    print("response 200")
                     json_data = await location_response.json()
-                    print("json")
 
                     try:
                         lat = json_data[0]["lat"]
@@ -350,6 +181,12 @@ class WeatherApp(MDApp):
                     return "Success"
                 else:
                     print(f"An error occurred! Error code {weather_response.status}")
+
+    def extractCountryData(self):
+        data = pandas.read_csv("assets/country-data.csv")
+        countries = data.Name.values
+        country_codes = data.Code.values
+        return countries, country_codes
 
     def modify_time(self, json_data, key, subkey=None, tz=False, timezone=None):
         if subkey == None:
@@ -420,4 +257,242 @@ class WeatherApp(MDApp):
         }
 
 
-WeatherApp().run()
+class WeatherApp(MDApp, MessageHandler, DataHandler):
+    def __init__(self, **kwargs):
+        super(WeatherApp, self).__init__(**kwargs)
+
+        self.request_in_progress = False  # Flag to track request status
+        self.first_run = True
+        self.called = False
+        self.alert_dialog = None
+        self.dialog = None
+        self.conn_error_dialog = None
+        self.is_retrying = False
+        self.is_ip = True
+        self.city = "City"
+        self.country_code = "Country code"
+        self.country = "Country"
+        self.max_retries = 10
+
+    def build(self):
+        # self.theme_cls.colors = colours
+        self.icon = "images/weather-icon.png"
+        self.theme_cls.theme_style_switch_animation = True
+        self.theme_cls.primary_palette = "DeepPurple"
+        self.theme_cls.theme_style = "Dark"
+        Builder.load_file("weather-md.kv")
+
+        return WeatherUI()
+
+    def on_start(self):
+        self.initMenu()
+        Clock.schedule_once(self.start_request)
+        Clock.schedule_interval(
+            self.check_request_status, 0.5
+        )  # Check status every 0.5 seconds
+
+    def changeTheme(self, x):
+        # "#607D8B"
+        self.theme_cls.theme_style = (
+            "Dark" if self.theme_cls.theme_style == "Light" else "Light"
+        )
+
+    def initMenu(self):
+        countries, country_codes = self.extractCountryData()
+        self.countries = countries
+        self.country_codes = country_codes
+
+        self.cdialog = ChangeDialog()
+
+        self.menu_items = [
+            {
+                "viewclass": "OneLineListItem",
+                "text": str(i),
+                "on_press": lambda x=str(i): self.changeCountry(x),
+            }
+            for i in self.countries
+        ]
+
+        self.menu = MDDropdownMenu(
+            caller=self.cdialog.ids.country_input,
+            items=self.menu_items,
+            ver_growth="down",
+            hor_growth="right",
+            position="center",
+            width_mult=4,
+            max_height=200,
+            elevation=5,
+        )
+
+    def filterCountries(self, *args):
+        country_input = self.cdialog.ids.country_input.text.lower()
+
+        def filterCountry(country):
+            if country_input in country:
+                return True
+
+        if (not country_input == "") and (not self.called == True):
+            items = list(filter(filterCountry, self.countries))
+            self.menu_items = [
+                {
+                    "viewclass": "OneLineListItem",
+                    "text": str(i),
+                    "on_press": lambda x=str(i): self.changeCountry(x),
+                }
+                for i in items
+            ]
+            self.menu.items = self.menu_items
+            self.menu.dismiss()
+            self.menu.open()
+
+            self.menu_items = [
+                {
+                    "viewclass": "OneLineListItem",
+                    "text": str(i),
+                    "on_press": lambda x=str(i): self.changeCountry(x),
+                }
+                for i in self.countries
+            ]
+
+        self.called = False
+
+    def retry(self, *args):
+        if self.conn_error_dialog:
+            self.conn_error_dialog.dismiss(force=True)
+        status, code = self.checkConnection()
+        if status == True:
+            Clock.schedule_once(self.start_request)
+        else:
+            print(code)
+
+    def changeCountry(self, text):
+        self.called = True
+        print(text)
+        self.cdialog.ids.country_input.text = text
+        index = list(self.countries).index(text.lower())
+        self.city = self.cdialog.ids.city_input.text
+        self.country = text
+        self.country_code = self.country_codes[index]
+        self.menu.dismiss()
+
+    def doProgress(self, state):
+        if state == "off":
+            print("Start")
+            self.root.ids.progress.start()
+        if state == "on":
+            print("Stop")
+            self.root.ids.progress.stop()
+
+    def get_data(self, *args):
+        self.dialog.dismiss(force=True)
+        if not self.request_in_progress:
+            self.root.ids.progress.start()
+            self.old_city = self.city
+            self.old_country = self.country
+            self.old_country_code = self.country_code
+            self.country = self.cdialog.ids.country_input.text
+            try:
+                index = list(self.countries).index(self.country.lower())
+                self.country_code = self.country_codes[index]
+            except Exception:
+                self.country = self.old_country
+                self.dialog.dismiss(force=True)
+                self.cityNotFound()
+                return
+            self.city = self.cdialog.ids.city_input.text
+            Clock.schedule_once(self.start_request)
+        self.root.ids.progress.stop()
+
+    def start_request(self, *args):
+        self.request_in_progress = True
+        Clock.schedule_once(
+            lambda dt: asyncio.run(self.make_request(self.city, self.country_code))
+        )
+        print(self.city, self.country, self.country_code)
+
+    async def make_request(self, city, country_code):
+        api_key = "c4fd92f2363b707ff8f8f192e5d3f02c"
+        if not self.first_run:
+            if not self.is_ip:
+                location_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit=3&appid={api_key}"
+                for i in range(self.max_retries):
+                    self.doProgress("off")
+                    try:
+                        lat, lon = await self.get_location(location_url)
+                        self.doProgress("on")
+                        break
+                    except Exception as e:
+                        print(f"Error at getting location: {e}")
+
+                else:
+                    self.connectionError()
+                    return
+
+        else:
+            for i in range(self.max_retries):
+                self.doProgress("off")
+                try:
+                    lat, lon = await self.get_my_current_location()
+                    if self.is_retrying == True:
+                        self.is_retrying = False
+                        self.retry_event.cancel()
+                    self.doProgress("on")
+                    break
+                except Exception as e:
+                    print(f"Error at ip getting location: {e}")
+
+            else:
+                print("[error]connection error")
+                self.connectionError()
+                return
+
+        if lat == 1 and lon == 1:
+            self.root.ids.city.text = self.city = self.old_city
+            self.root.ids.country.text = self.country = self.old_country
+            self.country_code = self.old_country
+            self.dialog.dismiss(force=True)
+            self.cityNotFound()
+            return "City not found!"
+        else:
+            weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}"
+            for i in range(self.max_retries):
+                self.doProgress("off")
+                try:
+                    status = await self.get_weather_data(weather_url)
+                    self.doProgress("on")
+                    break
+                except Exception as e:
+                    print(f"Error at getting weather data: {e}")
+            else:
+                self.connectionError()
+                return
+
+            if not status == "Success":
+                self.city = status
+                return status
+            data = await self.modify()
+            self.first_run = False
+            return data
+
+    def check_request_status(self, dt):
+        if self.request_in_progress:
+            if not self.first_run:
+                self.request_in_progress = False
+                self.root.ids.image.source = f"images/{self.weather_data['icon']}.png"
+                self.root.ids.weather.text = self.weather_data["weather"]
+                self.root.ids.weather_info.text = self.weather_data["weather-info"]
+                self.root.ids.temperature.text = self.weather_data["temp"] + "°C"
+                self.root.ids.feels_like_temp.text = f"Feels Like {self.weather_data['feels_like']}°C"
+                self.root.ids.humidity.text = self.weather_data["humidity"] + "%"
+                self.root.ids.sunrise.text = self.weather_data["sunrise"]
+                self.root.ids.sunset.text = self.weather_data["sunset"]
+                self.root.ids.wind.text = self.weather_data["wind"] + "m/s"
+
+            self.root.ids.city.text = self.city.capitalize()
+            self.root.ids.country.text = self.country.capitalize()
+
+    
+
+
+weather_instance = WeatherApp()
+weather_instance.run()
