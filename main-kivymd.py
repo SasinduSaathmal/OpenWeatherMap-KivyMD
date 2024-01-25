@@ -6,13 +6,13 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.menu import MDDropdownMenu
 from kivy.clock import Clock
+from kivy.utils import platform
 import pandas
 import aiohttp
 import json
 import datetime
 import geocoder
 import pytz
-import platform
 import asyncio
 import requests
 import os
@@ -23,7 +23,7 @@ import ssl
 ssl.default_ca_certs = certifi.where()
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
-if platform.system() == "Windows":
+if platform == "win":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
@@ -50,19 +50,21 @@ class MessageHandler():
                         text="OK",
                         theme_text_color="Custom",
                         text_color=self.theme_cls.primary_color,
-                        on_release=lambda x: self.closeDialog(alert=True, dialog=True),
+                        on_release=lambda x: self.closeDialog(alert=True, dialog=True, error=False),
                     )
                 ],
             )
 
-        self.root.ids.city.text = self.city = self.old_city
-        self.root.ids.country.text = self.country = self.old_country
+        self.root.ids.city.text = self.city = self.old_city.capitalize()
+        self.root.ids.country.text = self.country = self.old_country.capitalize()
         self.country_code = self.old_country
 
         self.alert_dialog.open()
 
     def connectionError(self):
         self.retry_event = Clock.schedule_interval(self.retry, 1)
+
+        self.conn_error_dialog_closed = False
         self.conn_error_dialog = MDDialog(
             title = "Connection Error",
             text = "Failed to connect to the api after 10 max retries.",
@@ -71,10 +73,15 @@ class MessageHandler():
                 MDFlatButton(
                     text = "RETRY",
                     text_color = "red",
-                    on_release = self.retry,
+                    on_release = lambda x: self.closeDialog(dialog=False, alert=False, error=True),
                     )
                 ],
             )
+
+        if self.first_run:
+            self.root.ids.city.text = self.city = self.old_city.capitalize()
+            self.root.ids.country.text = self.country = self.old_country.capitalize()
+            self.country_code = self.old_country
 
         self.conn_error_dialog.open()
 
@@ -89,7 +96,7 @@ class MessageHandler():
                         text="CANCEL",
                         theme_text_color="Custom",
                         text_color=self.theme_cls.primary_color,
-                        on_release=lambda x: self.closeDialog(dialog=True, alert=False),
+                        on_release=lambda x: self.closeDialog(dialog=True, alert=False, error=False),
                     ),
                     MDFlatButton(
                         text="UPDATE",
@@ -108,6 +115,9 @@ class MessageHandler():
             self.dialog.dismiss(force=True)
         if kwargs["alert"] == True:
             self.alert_dialog.dismiss(force=True)
+        if kwargs["error"] == True:
+            self.conn_error_dialog.dismiss(force=True)
+            self.conn_error_dialog_closed = True
 
 
 class DataHandler():
@@ -118,7 +128,6 @@ class DataHandler():
         self.is_retrying = True
         try:
             resp = requests.get("https://www.google.com")
-            data = resp.text
             status = resp.status_code
             return True, status
         except Exception as e:
@@ -148,39 +157,37 @@ class DataHandler():
         return None
 
     async def get_location(self, location_url):
-        async with aiohttp.ClientSession() as self.session:
-            async with self.session.get(location_url) as location_response:
-                if location_response.status == 200:
-                    json_data = await location_response.json()
+        async with self.session.get(location_url, ssl=False) as location_response:
+            if location_response.status == 200:
+                json_data = await location_response.json()
 
-                    try:
-                        lat = json_data[0]["lat"]
-                        lon = json_data[0]["lon"]
-                    except Exception as e:
-                        lat, lon = 1, 1
-                        with open("Errors.txt", "a") as error_file:
-                            dt = datetime.datetime.now().strftime("%y-%m-%d %H:%M:%S")
-                            error_file.write(f"[{dt}] {str(e)}\n")
+                try:
+                    lat = json_data[0]["lat"]
+                    lon = json_data[0]["lon"]
+                except Exception as e:
+                    lat, lon = 1, 1
+                    with open("Errors.txt", "a") as error_file:
+                        dt = datetime.datetime.now().strftime("%y-%m-%d %H:%M:%S")
+                        error_file.write(f"[{dt}] {str(e)}\n")
 
-                    return lat, lon
+                return lat, lon
 
-                else:
-                    print(
-                        "Error",
-                        f"An error occurred! Error code {location_response.status}",
-                    )
+            else:
+                print(
+                    "Error",
+                    f"An error occurred! Error code {location_response.status}",
+                )
 
     async def get_weather_data(self, weather_url):
-        async with aiohttp.ClientSession() as self.session:
-            async with self.session.get(weather_url) as weather_response:
-                if weather_response.status == 200:
-                    json_data = await weather_response.json()
-                    with open("response.json", "w") as file:
-                        json.dump(json_data, file, indent=4, sort_keys=True)
+        async with self.session.get(weather_url, ssl=False) as weather_response:
+            if weather_response.status == 200:
+                json_data = await weather_response.json()
+                with open("response.json", "w") as file:
+                    json.dump(json_data, file, indent=4, sort_keys=True)
 
-                    return "Success"
-                else:
-                    print(f"An error occurred! Error code {weather_response.status}")
+                return "Success"
+            else:
+                print(f"An error occurred! Error code {weather_response.status}")
 
     def extractCountryData(self):
         data = pandas.read_csv("assets/country-data.csv")
@@ -266,6 +273,7 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
         self.called = False
         self.alert_dialog = None
         self.dialog = None
+        self.conn_error_dialog_closed = False
         self.conn_error_dialog = None
         self.is_retrying = False
         self.is_ip = True
@@ -273,6 +281,7 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
         self.country_code = "Country code"
         self.country = "Country"
         self.max_retries = 10
+        self.retry_counter = 0
 
     def build(self):
         # self.theme_cls.colors = colours
@@ -357,22 +366,25 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
         self.called = False
 
     def retry(self, *args):
-        if self.conn_error_dialog:
-            self.conn_error_dialog.dismiss(force=True)
-        status, code = self.checkConnection()
-        if status == True:
-            Clock.schedule_once(self.start_request)
-        else:
-            print(code)
+        if self.conn_error_dialog_closed:
+            self.retry_counter += 1
+            status, code = self.checkConnection()
+            if status == True:
+                Clock.schedule_once(self.start_request)
+            else:
+                print(code)
+
+            if self.retry_counter % 10:
+                self.connectionError()
 
     def changeCountry(self, text):
         self.called = True
         print(text)
         self.cdialog.ids.country_input.text = text
         index = list(self.countries).index(text.lower())
-        self.city = self.cdialog.ids.city_input.text
-        self.country = text
-        self.country_code = self.country_codes[index]
+        # self.city = self.cdialog.ids.city_input.text
+        # self.country = text
+        # self.country_code = self.country_codes[index]
         self.menu.dismiss()
 
     def doProgress(self, state):
@@ -389,12 +401,14 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
             self.root.ids.progress.start()
             self.old_city = self.city
             self.old_country = self.country
+            print(f"[Log1]Old: {self.old_city}, {self.old_country} | New: {self.city}, {self.country}")
             self.old_country_code = self.country_code
             self.country = self.cdialog.ids.country_input.text
             try:
                 index = list(self.countries).index(self.country.lower())
                 self.country_code = self.country_codes[index]
             except Exception:
+                print(f"[Error]Old: {self.old_city}, {self.old_country} | New: {self.city}, {self.country}")
                 self.country = self.old_country
                 self.dialog.dismiss(force=True)
                 self.cityNotFound()
@@ -412,67 +426,69 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
 
     async def make_request(self, city, country_code):
         api_key = "c4fd92f2363b707ff8f8f192e5d3f02c"
-        if not self.first_run:
-            if not self.is_ip:
-                location_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit=3&appid={api_key}"
+        async with aiohttp.ClientSession(trust_env=True) as self.session:
+            if not self.first_run:
+                if not self.is_ip:
+                    location_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit=1&appid={api_key}"
+                    for i in range(self.max_retries):
+                        self.doProgress("off")
+                        try:
+                            lat, lon = await self.get_location(location_url)
+                            self.doProgress("on")
+                            break
+                        except Exception as e:
+                            print(f"Error at getting location: {e}")
+
+                    else:
+                        self.connectionError()
+                        return
+
+            else:
                 for i in range(self.max_retries):
                     self.doProgress("off")
                     try:
-                        lat, lon = await self.get_location(location_url)
+                        lat, lon = await self.get_my_current_location()
+                        if self.is_retrying == True:
+                            self.is_retrying = False
+                            self.retry_event.cancel()
                         self.doProgress("on")
                         break
                     except Exception as e:
-                        print(f"Error at getting location: {e}")
+                        print(f"Error at ip getting location: {e}")
 
+                else:
+                    print("[error]connection error")
+                    self.connectionError()
+                    return
+
+            if lat == 1 and lon == 1:
+                print("Error in flow")
+                self.root.ids.city.text = self.city = self.old_city
+                self.root.ids.country.text = self.country = self.old_country
+                self.country_code = self.old_country
+                self.dialog.dismiss(force=True)
+                self.cityNotFound()
+                return "City not found!"
+            else:
+                weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}"
+                for i in range(self.max_retries):
+                    self.doProgress("off")
+                    try:
+                        status = await self.get_weather_data(weather_url)
+                        self.doProgress("on")
+                        break
+                    except Exception as e:
+                        print(f"Error at getting weather data: {e}")
                 else:
                     self.connectionError()
                     return
 
-        else:
-            for i in range(self.max_retries):
-                self.doProgress("off")
-                try:
-                    lat, lon = await self.get_my_current_location()
-                    if self.is_retrying == True:
-                        self.is_retrying = False
-                        self.retry_event.cancel()
-                    self.doProgress("on")
-                    break
-                except Exception as e:
-                    print(f"Error at ip getting location: {e}")
-
-            else:
-                print("[error]connection error")
-                self.connectionError()
-                return
-
-        if lat == 1 and lon == 1:
-            self.root.ids.city.text = self.city = self.old_city
-            self.root.ids.country.text = self.country = self.old_country
-            self.country_code = self.old_country
-            self.dialog.dismiss(force=True)
-            self.cityNotFound()
-            return "City not found!"
-        else:
-            weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}"
-            for i in range(self.max_retries):
-                self.doProgress("off")
-                try:
-                    status = await self.get_weather_data(weather_url)
-                    self.doProgress("on")
-                    break
-                except Exception as e:
-                    print(f"Error at getting weather data: {e}")
-            else:
-                self.connectionError()
-                return
-
-            if not status == "Success":
-                self.city = status
-                return status
-            data = await self.modify()
-            self.first_run = False
-            return data
+                if not status == "Success":
+                    self.city = status
+                    return status
+                data = await self.modify()
+                self.first_run = False
+                return data
 
     def check_request_status(self, dt):
         if self.request_in_progress:
@@ -481,12 +497,12 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
                 self.root.ids.image.source = f"images/{self.weather_data['icon']}.png"
                 self.root.ids.weather.text = self.weather_data["weather"]
                 self.root.ids.weather_info.text = self.weather_data["weather-info"]
-                self.root.ids.temperature.text = self.weather_data["temp"] + "°C"
+                self.root.ids.temperature.text = f"{self.weather_data['temp']}°C"
                 self.root.ids.feels_like_temp.text = f"Feels Like {self.weather_data['feels_like']}°C"
                 self.root.ids.humidity.text = self.weather_data["humidity"] + "%"
                 self.root.ids.sunrise.text = self.weather_data["sunrise"]
                 self.root.ids.sunset.text = self.weather_data["sunset"]
-                self.root.ids.wind.text = self.weather_data["wind"] + "m/s"
+                self.root.ids.wind.text = self.weather_data["wind"] + " m/s"
 
             self.root.ids.city.text = self.city.capitalize()
             self.root.ids.country.text = self.country.capitalize()

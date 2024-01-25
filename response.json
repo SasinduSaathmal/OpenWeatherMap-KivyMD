@@ -1,44 +1,44 @@
 {
     "base": "stations",
     "clouds": {
-        "all": 32
+        "all": 1
     },
     "cod": 200,
     "coord": {
-        "lat": 6.8905,
-        "lon": 79.9015
+        "lat": 6.8402,
+        "lon": 79.8712
     },
-    "dt": 1705911459,
-    "id": 1230089,
+    "dt": 1706170476,
+    "id": 1246321,
     "main": {
-        "feels_like": 307.27,
-        "grnd_level": 1010,
-        "humidity": 63,
-        "pressure": 1011,
-        "sea_level": 1011,
-        "temp": 303.47,
-        "temp_max": 303.47,
-        "temp_min": 303.47
+        "feels_like": 304.2,
+        "grnd_level": 1011,
+        "humidity": 60,
+        "pressure": 1012,
+        "sea_level": 1012,
+        "temp": 302.16,
+        "temp_max": 302.16,
+        "temp_min": 302.16
     },
-    "name": "Pita Kotte",
+    "name": "Galkissa",
     "sys": {
         "country": "LK",
-        "sunrise": 1705885080,
-        "sunset": 1705927506
+        "sunrise": 1706144309,
+        "sunset": 1706186788
     },
     "timezone": 19800,
     "visibility": 10000,
     "weather": [
         {
-            "description": "scattered clouds",
-            "icon": "03d",
-            "id": 802,
-            "main": "Clouds"
+            "description": "clear sky",
+            "icon": "01d",
+            "id": 800,
+            "main": "Clear"
         }
     ],
     "wind": {
-        "deg": 298,
-        "gust": 3.94,
-        "speed": 3.33
+        "deg": 276,
+        "gust": 3.59,
+        "speed": 3.38
     }
 }
