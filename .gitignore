@@ -10,12 +10,19 @@ __pycache__/
 async_requests.py
 .gitignore
 .gitattributes
+run.bat
+command.txt
+images/Animation - 1708089205607.json
+dists/
+build/
+Weather Today.spec
 images/10761008_45211.jpg
 images/angryimg (1).png
 images/angryimg.png
 assets/new.csv
 Errors.txt
 response.json
+test.py
 
 # Distribution / packaging
 .Python

@@ -3,8 +3,10 @@ from kivy.lang import Builder
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.dialog import MDDialog
+from kivy.uix.screenmanager import ScreenManager, Screen
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.menu import MDDropdownMenu
+from kivy.network.urlrequest import UrlRequest
 from kivy.clock import Clock
 from kivy.utils import platform
 import pandas
@@ -18,6 +20,8 @@ import requests
 import os
 import certifi
 import ssl
+import sys
+from kivy.resources import resource_add_path, resource_find
 
 
 ssl.default_ca_certs = certifi.where()
@@ -26,12 +30,18 @@ os.environ['SSL_CERT_FILE'] = certifi.where()
 if platform == "win":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+Builder.load_file("weather-md.kv")
 
-class WeatherUI(MDRelativeLayout):
+
+class WeatherUI(Screen):
     pass
 
 
 class ChangeDialog(MDBoxLayout):
+    pass
+
+
+class NoInternetInterface(Screen):
     pass
 
 
@@ -55,16 +65,21 @@ class MessageHandler():
                 ],
             )
 
-        self.root.ids.city.text = self.city = self.old_city.capitalize()
-        self.root.ids.country.text = self.country = self.old_country.capitalize()
-        self.country_code = self.old_country
+        try:
+            self.root.ids.city.text = self.city = self.old_city.capitalize()
+            self.root.ids.country.text = self.country = self.old_country.capitalize()
+            self.country_code = self.old_country
+        except Exception as e:
+            self.root.ids.city.text = self.city
+            self.root.ids.country.text = self.country
 
         self.alert_dialog.open()
 
     def connectionError(self):
-        self.retry_event = Clock.schedule_interval(self.retry, 1)
+        if not self.is_retry_event:
+            self.retry_event = Clock.schedule_interval(self.retry, 3)
+            self.is_retry_event = True
 
-        self.conn_error_dialog_closed = False
         self.conn_error_dialog = MDDialog(
             title = "Connection Error",
             text = "Failed to connect to the api after 10 max retries.",
@@ -78,7 +93,7 @@ class MessageHandler():
                 ],
             )
 
-        if self.first_run:
+        if not self.first_run:
             self.root.ids.city.text = self.city = self.old_city.capitalize()
             self.root.ids.country.text = self.country = self.old_country.capitalize()
             self.country_code = self.old_country
@@ -127,7 +142,7 @@ class DataHandler():
     def checkConnection(self):
         self.is_retrying = True
         try:
-            resp = requests.get("https://www.google.com")
+            resp = requests.get("https://example.com")
             status = resp.status_code
             return True, status
         except Exception as e:
@@ -166,7 +181,8 @@ class DataHandler():
                     lon = json_data[0]["lon"]
                 except Exception as e:
                     lat, lon = 1, 1
-                    with open("Errors.txt", "a") as error_file:
+                    error_path = os.path.join("", "Errors.txt")
+                    with open(error_path, "a") as error_file:
                         dt = datetime.datetime.now().strftime("%y-%m-%d %H:%M:%S")
                         error_file.write(f"[{dt}] {str(e)}\n")
 
@@ -182,7 +198,8 @@ class DataHandler():
         async with self.session.get(weather_url, ssl=False) as weather_response:
             if weather_response.status == 200:
                 json_data = await weather_response.json()
-                with open("response.json", "w") as file:
+                json_location = os.path.join("", "response.json")
+                with open(json_location, "w") as file:
                     json.dump(json_data, file, indent=4, sort_keys=True)
 
                 return "Success"
@@ -190,7 +207,8 @@ class DataHandler():
                 print(f"An error occurred! Error code {weather_response.status}")
 
     def extractCountryData(self):
-        data = pandas.read_csv("assets/country-data.csv")
+        path = os.path.join("assets", "country-data.csv")
+        data = pandas.read_csv(path)
         countries = data.Name.values
         country_codes = data.Code.values
         return countries, country_codes
@@ -247,6 +265,7 @@ class DataHandler():
         sunset = self.modify_time(json_data, "sys", "sunset", True, timezone)
         wind = json_data["wind"]["speed"]
         icon = json_data["weather"][0]["icon"]
+        icon_url = self.setIconAnimation(str(icon))
         description = json_data["weather"][0]["description"]
         main = json_data["weather"][0]["main"]
         self.icon_url = f"https://openweathermap.org/img/wn/{icon}@2x.png"
@@ -259,9 +278,33 @@ class DataHandler():
             "sunrise": str(sunrise),
             "weather": str(main),
             "weather-info": str(description),
-            "icon": str(icon),
+            "icon": str(icon_url),
             "wind": str(wind),
         }
+
+
+    def setIconAnimation(self, icon):
+        anime_urls = {"01d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "01n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "02d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "02n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "03d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "03n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "04d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "04n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "09d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "09n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "10d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "10n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "11d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "11n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "13d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "13n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "50d": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__",
+                    "50n": "https://private-cdn.lottie.host/104a8665-dede-4f65-8784-2bcb9eb9e7b6/variation/OvlgitWG7i.gif?versionId=.zJT3J1xY1kRFSMhHR4WeyFawWRTS5HA&response-content-disposition=attachment&Expires=1708110838&Key-Pair-Id=KIYCB0SQ8V5G8&Signature=LfC2rJY-zz47SypBnBOcQ8ymSeIDQlg-93qlB2ASl341QSAfXuy7VT87nK20qFxWR9Vf1n9ULheOc2Utk-UY~k3do~Fwy~wx1y~lutQ51ZAUVFqa7HJNanDsA-fEz1lTMUmw7DL4jzXrL2c-XK1hEDgqnx6gaWX-xJRMcmH0kSyFvUUZIPwAmxSrlAcSDUavN3s1DLFwu-lDMEiJFQWCqaRhC8CULcTlGPjoG8gc-jtDImlp5Z-5LopAa3gtadBokel-02KwcS9sbm4iEuhteY7271ZxqQVMN9XzDl8sPCVFsJrZZZCRJg4wFp2HWiXeSJ9TA6u~ElXP6KcyuFZD5g__"}
+
+        url = anime_urls[icon]
+        return url
 
 
 class WeatherApp(MDApp, MessageHandler, DataHandler):
@@ -273,8 +316,8 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
         self.called = False
         self.alert_dialog = None
         self.dialog = None
-        self.conn_error_dialog_closed = False
         self.conn_error_dialog = None
+        self.is_retry_event = False
         self.is_retrying = False
         self.is_ip = True
         self.city = "City"
@@ -289,9 +332,14 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
         self.theme_cls.theme_style_switch_animation = True
         self.theme_cls.primary_palette = "DeepPurple"
         self.theme_cls.theme_style = "Dark"
-        Builder.load_file("weather-md.kv")
+        sm = ScreenManager()
+        weather_interface = WeatherUI(name="online")
+        offline_screen = NoInternetInterface(name="offline")
+        sm.add_widget(weather_interface)
+        sm.add_widget(offline_screen)
+        sm.current = "offline"
 
-        return WeatherUI()
+        return sm
 
     def on_start(self):
         self.initMenu()
@@ -366,16 +414,19 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
         self.called = False
 
     def retry(self, *args):
-        if self.conn_error_dialog_closed:
-            self.retry_counter += 1
-            status, code = self.checkConnection()
-            if status == True:
-                Clock.schedule_once(self.start_request)
-            else:
-                print(code)
+        self.retry_counter += 1
+        status, code = self.checkConnection()
+        if status == True:
+            if self.is_retrying == True:
+                self.is_retrying = False
+                self.retry_event.cancel()
+                self.is_retry_event = False
+            Clock.schedule_once(self.start_request)
+        else:
+            print(code)
 
-            if self.retry_counter % 10:
-                self.connectionError()
+        if self.retry_counter % 10:
+            self.connectionError()
 
     def changeCountry(self, text):
         self.called = True
@@ -448,9 +499,6 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
                     self.doProgress("off")
                     try:
                         lat, lon = await self.get_my_current_location()
-                        if self.is_retrying == True:
-                            self.is_retrying = False
-                            self.retry_event.cancel()
                         self.doProgress("on")
                         break
                     except Exception as e:
@@ -494,7 +542,8 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
         if self.request_in_progress:
             if not self.first_run:
                 self.request_in_progress = False
-                self.root.ids.image.source = f"images/{self.weather_data['icon']}.png"
+                # self.root.ids.image.source = f"images/{self.weather_data['icon']}.png"
+                self.root.ids.image.source = f"{self.weather_data['icon']}"
                 self.root.ids.weather.text = self.weather_data["weather"]
                 self.root.ids.weather_info.text = self.weather_data["weather-info"]
                 self.root.ids.temperature.text = f"{self.weather_data['temp']}°C"
@@ -510,5 +559,7 @@ class WeatherApp(MDApp, MessageHandler, DataHandler):
     
 
 
-weather_instance = WeatherApp()
-weather_instance.run()
+if __name__ == '__main__':
+    if hasattr(sys, '_MEIPASS'):
+        resource_add_path(os.path.join(sys._MEIPASS))
+    WeatherApp().run()

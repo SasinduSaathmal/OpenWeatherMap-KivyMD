@@ -20,6 +20,18 @@
             
 <ToolTipActionButton@MDFloatingActionButton+MDTooltip>
 
+<NoInternetInterface>:
+    MDFloatLayout:
+        MDAnchorLayout:
+            anchor_x: "center"
+            anchor_y: "center"
+            MDLabel:
+                text: "No Internet!"
+                halign: "center"
+                font_style: "H1"
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+
 
 <ChangeDialog>:
     orientation: "vertical"
@@ -103,8 +115,9 @@
                             anchor_y: "center"
                             AsyncImage:
                                 id: image
+                                anim_delay: 0
                                 source: "images/weather.png"
-                                allow_strech: False
+                                allow_strech: True
                                 pos_hint_y: 0.1
                                 #size_hint: 2, 2
 
