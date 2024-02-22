@@ -84,8 +84,12 @@ class MessageHandler(AbstractProperties):
             )
 
         try:
-            self.weather_interface.ids.city.text = self.city = self.old_city.capitalize()
-            self.weather_interface.ids.country.text = self.country = self.old_country.capitalize()
+            self.weather_interface.ids.city.text = self.city = (
+                self.old_city.capitalize()
+            )
+            self.weather_interface.ids.country.text = self.country = (
+                self.old_country.capitalize()
+            )
             self.country_code = self.old_country
         except Exception as e:
             self.weather_interface.ids.city.text = self.city
@@ -101,27 +105,14 @@ class MessageHandler(AbstractProperties):
         if self.sm.current == "online":
             self.sm.current = "offline"
 
-        # self.conn_error_dialog = MDDialog(
-        #     title="Connection Error",
-        #     text="Failed to connect to the api after 10 max retries.",
-        #     widget_style="android",
-        #     buttons=[
-        #         MDFlatButton(
-        #             text="RETRY",
-        #             text_color="red",
-        #             on_release=lambda x: self.closeDialog(
-        #                 dialog=False, alert=False, error=True
-        #             ),
-        #         )
-        #     ],
-        # )
-
         if not self.first_run:
-            self.weather_interface.ids.city.text = self.city = self.old_city.capitalize()
-            self.weather_interface.ids.country.text = self.country = self.old_country.capitalize()
+            self.weather_interface.ids.city.text = self.city = (
+                self.old_city.capitalize()
+            )
+            self.weather_interface.ids.country.text = self.country = (
+                self.old_country.capitalize()
+            )
             self.country_code = self.old_country
-
-        # self.conn_error_dialog.open()
 
     def get_city(self, *args):
         if not self.dialog:
@@ -167,8 +158,8 @@ class DataHandler(MessageHandler):
         self.is_retrying = True
         try:
             resp = requests.get("https://example.com")
-            status = resp.status_code
-            return True, status
+            status_code = resp.status_code
+            return True, status_code
         except Exception as e:
             return False, e
 
@@ -180,7 +171,9 @@ class DataHandler(MessageHandler):
                 if coordinates is not None:
                     latitude, longitude = coordinates
                     self.weather_interface.ids.city.text = self.city = g.city
-                    self.weather_interface.ids.country.text = self.country_code = g.country
+                    self.weather_interface.ids.country.text = self.country_code = (
+                        g.country
+                    )
                     index = list(self.country_codes).index(self.country_code)
                     self.country = self.countries[index]
                     self.is_ip = False
@@ -203,7 +196,7 @@ class DataHandler(MessageHandler):
                     lat = json_data[0]["lat"]
                     lon = json_data[0]["lon"]
                 except Exception as e:
-                    lat, lon = 1, 1
+                    lat, lon = None, None
                     error_path = os.path.join("", "Errors.txt")
                     with open(error_path, "a") as error_file:
                         dt = datetime.datetime.now().strftime("%y-%m-%d %H:%M:%S")
@@ -321,7 +314,7 @@ class WeatherApp(MDApp, DataHandler):
         self.offline_screen = NoInternetInterface(name="offline")
         self.sm.add_widget(self.weather_interface)
         self.sm.add_widget(self.offline_screen)
-        self.sm.current = "online"
+        self.sm.current = "offline"
 
         return self.sm
 
@@ -409,8 +402,29 @@ class WeatherApp(MDApp, DataHandler):
         else:
             print(code)
 
-        if self.retry_counter % 10:
-            self.connectionError()
+    def retryFromUser(self, *args):
+        connection, code = self.checkConnection()
+        if connection == True:
+            Clock.schedule_once(self.start_request)
+        else:
+            self.conn_error_dialog = MDDialog(
+                            title="Connection Error",
+                            text=code,
+                            widget_style="android",
+                            buttons=[
+                                MDFlatButton(
+                                    text="RETRY",
+                                    text_color="red",
+                                    on_release=lambda x: self.closeDialog(
+                                        dialog=False, alert=False, error=True
+                                    ),
+                                )
+                            ],
+                        )
+                    
+        self.conn_error_dialog.open()
+
+
 
     def changeCountry(self, text):
         self.called = True
@@ -459,7 +473,7 @@ class WeatherApp(MDApp, DataHandler):
     def start_request(self, *args):
         if self.sm.current == "offline":
             self.sm.current = "online"
-            
+
         self.request_in_progress = True
         Clock.schedule_once(
             lambda dt: asyncio.run(self.make_request(self.city, self.country_code))
@@ -489,6 +503,7 @@ class WeatherApp(MDApp, DataHandler):
                 for i in range(self.max_retries):
                     self.doProgress("off")
                     try:
+                        print("at ip")
                         lat, lon = await self.get_my_current_location()
                         self.doProgress("on")
                         break
@@ -500,10 +515,12 @@ class WeatherApp(MDApp, DataHandler):
                     self.connectionError()
                     return
 
-            if lat == 1 and lon == 1:
+            if lat == None and lon == None:
                 print("Error in flow")
                 self.weather_interface.ids.city.text = self.city = self.old_city
-                self.weather_interface.ids.country.text = self.country = self.old_country
+                self.weather_interface.ids.country.text = self.country = (
+                    self.old_country
+                )
                 self.country_code = self.old_country
                 self.dialog.dismiss(force=True)
                 self.cityNotFound()
@@ -533,17 +550,27 @@ class WeatherApp(MDApp, DataHandler):
         if self.request_in_progress:
             if not self.first_run:
                 self.request_in_progress = False
-                self.weather_interface.ids.image.source = f"images/{self.weather_data['icon']}.png"
+                self.weather_interface.ids.image.source = (
+                    f"images/{self.weather_data['icon']}.png"
+                )
                 self.weather_interface.ids.weather.text = self.weather_data["weather"]
-                self.weather_interface.ids.weather_info.text = self.weather_data["weather-info"]
-                self.weather_interface.ids.temperature.text = f"{self.weather_data['temp']}°C"
+                self.weather_interface.ids.weather_info.text = self.weather_data[
+                    "weather-info"
+                ]
+                self.weather_interface.ids.temperature.text = (
+                    f"{self.weather_data['temp']}°C"
+                )
                 self.weather_interface.ids.feels_like_temp.text = (
                     f"Feels Like {self.weather_data['feels_like']}°C"
                 )
-                self.weather_interface.ids.humidity.text = self.weather_data["humidity"] + "%"
+                self.weather_interface.ids.humidity.text = (
+                    self.weather_data["humidity"] + "%"
+                )
                 self.weather_interface.ids.sunrise.text = self.weather_data["sunrise"]
                 self.weather_interface.ids.sunset.text = self.weather_data["sunset"]
-                self.weather_interface.ids.wind.text = self.weather_data["wind"] + " m/s"
+                self.weather_interface.ids.wind.text = (
+                    self.weather_data["wind"] + " m/s"
+                )
 
             self.weather_interface.ids.city.text = self.city.capitalize()
             self.weather_interface.ids.country.text = self.country.capitalize()
