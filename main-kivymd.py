@@ -59,6 +59,7 @@ class AbstractProperties:
         self.country = "Sri Lanka"
         self.max_retries = 10
         self.retry_counter = 0
+        self.connection_status = [bool, str]
 
 
 class MessageHandler(AbstractProperties):
@@ -74,7 +75,7 @@ class MessageHandler(AbstractProperties):
                 buttons=[
                     MDFlatButton(
                         text="OK",
-                        theme_text_color="Custom",
+                        theme_text_color="Error",
                         text_color=self.theme_cls.primary_color,
                         on_release=lambda x: self.closeDialog(
                             alert=True, dialog=True, error=False
@@ -123,7 +124,7 @@ class MessageHandler(AbstractProperties):
                 buttons=[
                     MDFlatButton(
                         text="CANCEL",
-                        theme_text_color="Custom",
+                        theme_text_color="Secondary",
                         text_color=self.theme_cls.primary_color,
                         on_release=lambda x: self.closeDialog(
                             dialog=True, alert=False, error=False
@@ -131,7 +132,7 @@ class MessageHandler(AbstractProperties):
                     ),
                     MDFlatButton(
                         text="UPDATE",
-                        theme_text_color="Custom",
+                        theme_text_color="Primary",
                         text_color=self.theme_cls.primary_color,
                         on_release=self.get_data,
                     ),
@@ -156,12 +157,19 @@ class DataHandler(MessageHandler):
 
     def checkConnection(self):
         self.is_retrying = True
-        try:
-            resp = requests.get("https://example.com")
-            status_code = resp.status_code
-            return True, status_code
-        except Exception as e:
-            return False, e
+        resp = []
+
+        url = "https://openweathermap.org"
+        UrlRequest(url, on_success=self.on_success, on_error=self.on_error)
+
+    def on_success(self, request, response):
+        code = request.resp_status
+        print("Connection success", code, request.result)
+        self.connection_status = [True, code]
+
+    def on_error(self, request, error):
+        print("Connection error", error)
+        self.connection_status = [False, error]
 
     async def get_my_current_location(self):
         try:
@@ -308,6 +316,7 @@ class WeatherApp(MDApp, DataHandler):
         self.theme_cls.theme_style_switch_animation = True
         self.theme_cls.primary_palette = "DeepPurple"
         self.theme_cls.theme_style = "Dark"
+        self.title = "Weather Today"
         Builder.load_file("weather-md.kv")
         self.sm = ScreenManager()
         self.weather_interface = WeatherUI(name="online")
@@ -392,7 +401,8 @@ class WeatherApp(MDApp, DataHandler):
 
     def retry(self, *args):
         self.retry_counter += 1
-        status, code = self.checkConnection()
+        self.checkConnection()
+        status, code = self.connection_status
         if status == True:
             if self.is_retrying == True:
                 self.is_retrying = False
@@ -403,28 +413,28 @@ class WeatherApp(MDApp, DataHandler):
             print(code)
 
     def retryFromUser(self, *args):
-        connection, code = self.checkConnection()
+        self.checkConnection()
+        connection, code = self.connection_status
         if connection == True:
             Clock.schedule_once(self.start_request)
         else:
-            self.conn_error_dialog = MDDialog(
-                            title="Connection Error",
-                            text=code,
-                            widget_style="android",
-                            buttons=[
-                                MDFlatButton(
-                                    text="RETRY",
-                                    text_color="red",
-                                    on_release=lambda x: self.closeDialog(
-                                        dialog=False, alert=False, error=True
-                                    ),
-                                )
-                            ],
+            if not self.conn_error_dialog:
+                self.conn_error_dialog = MDDialog(
+                    title="Connection Error",
+                    text=code,
+                    widget_style="android",
+                    buttons=[
+                        MDFlatButton(
+                            text="RETRY",
+                            theme_text_color="Error",
+                            on_release=lambda x: self.closeDialog(
+                                dialog=False, alert=False, error=True
+                            ),
                         )
-                    
-        self.conn_error_dialog.open()
+                    ],
+                )
 
-
+            self.conn_error_dialog.open()
 
     def changeCountry(self, text):
         self.called = True

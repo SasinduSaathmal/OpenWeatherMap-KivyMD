@@ -1,44 +1,46 @@
 {
     "base": "stations",
     "clouds": {
-        "all": 58
+        "all": 85
     },
     "cod": 200,
     "coord": {
-        "lat": 6.9355,
-        "lon": 79.8487
+        "lat": 6.8402,
+        "lon": 79.8712
     },
-    "dt": 1708603924,
-    "id": 1248991,
+    "dt": 1708675515,
+    "id": 1246321,
     "main": {
-        "feels_like": 305.48,
-        "grnd_level": 1009,
-        "humidity": 76,
-        "pressure": 1011,
-        "sea_level": 1011,
-        "temp": 301.51,
-        "temp_max": 301.51,
-        "temp_min": 301.51
+        "feels_like": 313.14,
+        "grnd_level": 1008,
+        "humidity": 65,
+        "pressure": 1010,
+        "sea_level": 1010,
+        "temp": 306.14,
+        "temp_max": 306.14,
+        "temp_min": 306.14
     },
-    "name": "Colombo",
+    "name": "Galkissa",
     "sys": {
         "country": "LK",
-        "sunrise": 1708563368,
-        "sunset": 1708606357
+        "id": 9098,
+        "sunrise": 1708649740,
+        "sunset": 1708692760,
+        "type": 1
     },
     "timezone": 19800,
     "visibility": 10000,
     "weather": [
         {
-            "description": "broken clouds",
+            "description": "overcast clouds",
             "icon": "04d",
-            "id": 803,
+            "id": 804,
             "main": "Clouds"
         }
     ],
     "wind": {
-        "deg": 254,
-        "gust": 4.21,
-        "speed": 4.07
+        "deg": 267,
+        "gust": 3.18,
+        "speed": 4.15
     }
 }

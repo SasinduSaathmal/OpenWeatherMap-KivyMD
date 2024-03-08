@@ -2,6 +2,7 @@
 
 #: import dp kivy.metrics.dp
 
+
 <LeftMostLabel@MDLabel>:
     AnchorLayout:
         anchor_x: "left"
@@ -9,6 +10,7 @@
             halign: "left"
             font_style: "H4"
             font_name: "fonts/Poppins-Light"
+
 
 <RightMostLabel@MDLabel>:
     AnchorLayout:
@@ -18,8 +20,8 @@
             font_style: "H4"
             font_name: "fonts/Poppins-Light"
             
-<ToolTipActionButton@MDFloatingActionButton+MDTooltip>
 
+<ToolTipActionButton@MDFloatingActionButton+MDTooltip>
 
 
 <NoInternetInterface>:
@@ -69,7 +71,6 @@
                     style: "tonal"
                     on_press: app.checkConnection()
                     pos_hint: {"center_x": 0.6, "center_y": 0.5}
-
 
 
 <ChangeDialog>:
